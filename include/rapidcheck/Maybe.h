@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <type_traits>
 #include <iostream>
 
@@ -81,8 +82,7 @@ public:
   ~Maybe();
 
 private:
-  using Storage = typename std::aligned_storage<sizeof(T), alignof(T)>::type;
-  Storage m_storage;
+  alignas(T) uint8_t m_storage[sizeof(T)];
   bool m_initialized;
 };
 
