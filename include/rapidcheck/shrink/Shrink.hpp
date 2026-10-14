@@ -1,7 +1,10 @@
 #pragma once
 
 #include <cmath>
+#include <concepts>
+#include <limits>
 #include <locale>
+#include <type_traits>
 
 #include "rapidcheck/seq/Transform.h"
 #include "rapidcheck/seq/Create.h"
@@ -35,6 +38,39 @@ private:
   T m_value;
   UInt m_diff;
   bool m_down;
+};
+
+template <std::floating_point T>
+class TowardsSeq<T> {
+  bool isApproximatelyEqual(T lhs, T rhs, T factor) {
+    // Idea from https://stackoverflow.com/a/35252934
+    const T lhs_next{std::nextafter(lhs, std::numeric_limits<T>::max())};
+    const T lhs_prev{std::nextafter(lhs, std::numeric_limits<T>::lowest())};
+    const T lhs_next_{lhs + (lhs_next - lhs) * factor};
+    const T lhs_prev_{lhs - (lhs - lhs_prev) * factor};
+    return lhs_prev_ <= rhs && rhs <= lhs_next_;
+  }
+public:
+  TowardsSeq(T value, T target)
+      : m_value(value)
+      , m_target(target) {}
+
+  Maybe<T> operator()() {
+    if (m_value == m_target) {
+      return Nothing;
+    }
+
+    // Shrink towards m_target. If we get sufficiently close, we assign m_target.
+    m_value = m_value / T{2.0} + m_target / T{2.0};
+    if (isApproximatelyEqual(m_value, m_target, 2.0)) {
+      m_value = m_target;
+    }
+
+    return m_value;
+  }
+private:
+  T m_value{};
+  T m_target{};
 };
 
 template <typename Container>
